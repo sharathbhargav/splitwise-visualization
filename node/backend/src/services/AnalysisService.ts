@@ -17,14 +17,14 @@ export class AnalysisService {
 
   /**
    * Get metadata about the dataset for populating filters
-   * Only includes confirmed canonical store names from mappings
+   * Returns all unique stores from transactions
    */
   static getMetadata(transactions: Transaction[], storeMappings: { [canonicalName: string]: string[] }): DatasetMetadata {
     const people = [...new Set(transactions.flatMap(t => t.shares.map(s => s.name)))];
     const categories = [...new Set(transactions.map(t => t.category))];
     
-    // Only include stores that have been normalized (exist in mappings)
-    const stores = Object.keys(storeMappings);
+    // Get all unique store names from transactions
+    const stores = [...new Set(transactions.map(t => t.description))];
     
     const dates = transactions.map(t => t.date).sort();
     const dateRange = {
@@ -42,7 +42,7 @@ export class AnalysisService {
 
   /**
    * Filter transactions based on provided criteria
-   * Only matches against canonical store names from mappings
+   * Matches against both canonical store names (from mappings) and original store names
    */
   private static filterTransactions(
     transactions: Transaction[],
@@ -61,11 +61,18 @@ export class AnalysisService {
         return false;
       }
 
-      // Store filter - only match if store exists in mappings
+      // Store filter - match against both canonical and original store names
       if (filters.stores?.length) {
         const canonicalName = storeToCanonical.get(transaction.description);
-        // If store isn't in mappings or canonical name isn't in filter, exclude it
-        if (!canonicalName || !filters.stores.includes(canonicalName)) {
+        const originalStoreName = transaction.description;
+        
+        // Match if the filter includes either:
+        // 1. The canonical name (for mapped stores)
+        // 2. The original store name (for unmapped stores)
+        const matchesFilter = filters.stores.includes(canonicalName || '') || 
+                             filters.stores.includes(originalStoreName);
+        
+        if (!matchesFilter) {
           return false;
         }
       }
@@ -117,7 +124,7 @@ export class AnalysisService {
 
   /**
    * Group spending by a specific dimension (category, store, or person)
-   * For stores, only shows confirmed canonical names from mappings
+   * For stores, shows both canonical names (from mappings) and original store names
    */
   static getSpendingBy(
     transactions: Transaction[],
@@ -144,10 +151,9 @@ export class AnalysisService {
         if (dimension === 'category') {
           key = transaction.category;
         } else { // store
-          // Only include stores that have been normalized
+          // Use canonical name if available, otherwise use original store name
           const canonicalName = storeToCanonical?.get(transaction.description);
-          if (!canonicalName) return; // Skip stores not in mappings
-          key = canonicalName;
+          key = canonicalName || transaction.description;
         }
         const currentAmount = groupedData.get(key) || 0;
         groupedData.set(key, currentAmount + transaction.cost);

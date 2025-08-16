@@ -15,13 +15,9 @@ router.get('/metadata', (req, res) => {
       });
     }
 
-    // Only return canonical store names from confirmed mappings
+    // Get metadata including all stores from transactions
     const storeMappings = req.session.data.storeMappings || {};
-    const metadata = {
-      ...AnalysisService.getMetadata(req.session.data.transactions, storeMappings),
-      // Override stores to only include canonical names
-      stores: Object.keys(storeMappings)
-    };
+    const metadata = AnalysisService.getMetadata(req.session.data.transactions, storeMappings);
 
     res.json(metadata);
   } catch (error) {
