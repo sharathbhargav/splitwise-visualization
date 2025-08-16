@@ -5,6 +5,7 @@ import './types/session';
 import { uploadRoutes } from './routes/uploadRoutes';
 import { storesRouter } from './routes/stores';
 import { analysisRouter } from './routes/analysis';
+import { advancedAnalyticsRouter } from './routes/advancedAnalytics';
 
 // Initialize express app
 const app = express();
@@ -35,6 +36,7 @@ app.use(session({
 app.use('/api/upload', uploadRoutes);
 app.use('/api/stores', storesRouter);
 app.use('/api/analysis', analysisRouter);
+app.use('/api/advanced-analytics', advancedAnalyticsRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

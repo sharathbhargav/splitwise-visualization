@@ -16,10 +16,11 @@ router.get('/metadata', (req, res) => {
     }
 
     // Only return canonical store names from confirmed mappings
+    const storeMappings = req.session.data.storeMappings || {};
     const metadata = {
-      ...AnalysisService.getMetadata(req.session.data.transactions),
+      ...AnalysisService.getMetadata(req.session.data.transactions, storeMappings),
       // Override stores to only include canonical names
-      stores: Object.keys(req.session.data.storeMappings || {})
+      stores: Object.keys(storeMappings)
     };
 
     res.json(metadata);
