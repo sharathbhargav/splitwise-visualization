@@ -11,14 +11,18 @@ import {
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:3000/api',
   withCredentials: true
 });
 
 export const uploadCSV = async (file: File): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await api.post<UploadResponse>('/upload', formData);
+  const response = await api.post<UploadResponse>('/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 
@@ -41,7 +45,7 @@ export const getMetadata = async (): Promise<DatasetMetadata> => {
 
 export const getSpendingAnalysis = async (
   filters: AnalysisFilters,
-  groupBy: 'time' | 'category' | 'store' | 'person',
+  groupBy: 'time' | 'category' | 'store' | 'person' | 'transactions',
   timeInterval?: 'day' | 'week' | 'month',
   page?: number,
   pageSize?: number

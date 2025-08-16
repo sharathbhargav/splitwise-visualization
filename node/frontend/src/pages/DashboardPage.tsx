@@ -1,4 +1,4 @@
-import { Alert, Box, CircularProgress, Grid, Typography } from '@mui/material';
+import { Alert, Box, CircularProgress, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Filters } from '../components/dashboard/Filters';
 import { SpendingTimelineChart } from '../components/dashboard/SpendingTimelineChart';
@@ -105,31 +105,32 @@ export const DashboardPage = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
+      <Stack spacing={3}>
+        <Box>
           <Filters metadata={metadata} onFiltersChange={handleFiltersChange} />
-        </Grid>
+        </Box>
 
-        <Grid item xs={12}>
+        <Box>
           <SpendingTimelineChart data={timelineData} />
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={6}>
-          <CategoryPieChart data={categoryData} />
-        </Grid>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
+          <Box flex={1}>
+            <CategoryPieChart data={categoryData} />
+          </Box>
+          <Box flex={1}>
+            <StoreBarChart data={storeData} />
+          </Box>
+        </Stack>
 
-        <Grid item xs={12} md={6}>
-          <StoreBarChart data={storeData} />
-        </Grid>
-
-        <Grid item xs={12}>
+        <Box>
           <TransactionsTable
             transactions={transactions}
             total={totalTransactions}
             onPageChange={handlePageChange}
           />
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
     </Box>
   );
 };
