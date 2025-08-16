@@ -74,6 +74,85 @@ export class StoreAnalysisService {
   }
 
   /**
+   * Merges two store groups into one
+   */
+  static mergeGroups(
+    group1: StoreGrouping,
+    group2: StoreGrouping,
+    transactions: Transaction[]
+  ): {
+    newGroup: StoreGrouping;
+    updatedTransactions: Transaction[];
+  } {
+    // Combine all names from both groups
+    const allNames = [
+      group1.canonicalName,
+      ...group1.variations,
+      group2.canonicalName,
+      ...group2.variations
+    ];
+
+    // Find the most frequent name to use as canonical
+    const canonicalName = this.findMostFrequent(allNames, transactions);
+
+    // Create new group with all variations
+    const variations = allNames.filter(name => name !== canonicalName);
+    const newGroup: StoreGrouping = { canonicalName, variations };
+
+    // Update transactions with new canonical name
+    const updatedTransactions = transactions.map(transaction => {
+      if (allNames.includes(transaction.description)) {
+        return {
+          ...transaction,
+          description: canonicalName
+        };
+      }
+      return transaction;
+    });
+
+    return { newGroup, updatedTransactions };
+  }
+
+  /**
+   * Splits variations from a group into a new group
+   */
+  static splitGroup(
+    group: StoreGrouping,
+    variationsToSplit: string[],
+    transactions: Transaction[]
+  ): {
+    originalGroup: StoreGrouping;
+    newGroup: StoreGrouping;
+    updatedTransactions: Transaction[];
+  } {
+    // Update original group
+    const originalGroup: StoreGrouping = {
+      canonicalName: group.canonicalName,
+      variations: group.variations.filter(v => !variationsToSplit.includes(v))
+    };
+
+    // Create new group from split variations
+    const canonicalName = this.findMostFrequent(variationsToSplit, transactions);
+    const newGroup: StoreGrouping = {
+      canonicalName,
+      variations: variationsToSplit.filter(v => v !== canonicalName)
+    };
+
+    // Update transactions for the new group
+    const updatedTransactions = transactions.map(transaction => {
+      if (variationsToSplit.includes(transaction.description)) {
+        return {
+          ...transaction,
+          description: canonicalName
+        };
+      }
+      return transaction;
+    });
+
+    return { originalGroup, newGroup, updatedTransactions };
+  }
+
+  /**
    * Applies store name mappings to transactions
    * Updates transaction descriptions to use canonical names
    */

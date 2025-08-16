@@ -51,6 +51,51 @@ export const RefineDataPage = () => {
     );
   };
 
+  const handleMergeGroups = (group1: StoreGrouping, group2: StoreGrouping) => {
+    // Remove both groups
+    const remainingGroups = groups.filter(
+      g => g.canonicalName !== group1.canonicalName && g.canonicalName !== group2.canonicalName
+    );
+
+    // Create new merged group
+    const allNames = [
+      group1.canonicalName,
+      ...group1.variations,
+      group2.canonicalName,
+      ...group2.variations
+    ];
+
+    // Use the first group's canonical name as default
+    const newGroup: StoreGrouping = {
+      canonicalName: group1.canonicalName,
+      variations: allNames.filter(name => name !== group1.canonicalName)
+    };
+
+    // Add new merged group
+    setGroups([...remainingGroups, newGroup]);
+  };
+
+  const handleSplitGroup = (group: StoreGrouping, variationsToSplit: string[]) => {
+    // Update original group
+    const updatedOriginalGroup: StoreGrouping = {
+      canonicalName: group.canonicalName,
+      variations: group.variations.filter(v => !variationsToSplit.includes(v))
+    };
+
+    // Create new group from split variations
+    const newGroup: StoreGrouping = {
+      canonicalName: variationsToSplit[0], // Use first variation as canonical name
+      variations: variationsToSplit.slice(1)
+    };
+
+    // Update groups list
+    setGroups(prevGroups => [
+      ...prevGroups.filter(g => g.canonicalName !== group.canonicalName),
+      updatedOriginalGroup,
+      newGroup
+    ]);
+  };
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -86,7 +131,8 @@ export const RefineDataPage = () => {
         Refine Store Names
       </Typography>
       <Typography variant="body1" color="text.secondary" align="center" gutterBottom>
-        Review and edit the suggested store name groupings below
+        Review and edit the suggested store name groupings below. You can merge similar stores
+        or split incorrectly grouped variations.
       </Typography>
 
       {error && (
@@ -100,8 +146,11 @@ export const RefineDataPage = () => {
           <StoreGroupEditor
             key={group.canonicalName}
             group={group}
+            allGroups={groups}
             onUpdate={handleUpdateGroup}
             onDelete={handleDeleteGroup}
+            onMerge={handleMergeGroups}
+            onSplit={handleSplitGroup}
           />
         ))}
       </Stack>
