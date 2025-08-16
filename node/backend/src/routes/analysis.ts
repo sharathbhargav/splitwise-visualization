@@ -15,7 +15,13 @@ router.get('/metadata', (req, res) => {
       });
     }
 
-    const metadata = AnalysisService.getMetadata(req.session.data.transactions);
+    // Only return canonical store names from confirmed mappings
+    const metadata = {
+      ...AnalysisService.getMetadata(req.session.data.transactions),
+      // Override stores to only include canonical names
+      stores: Object.keys(req.session.data.storeMappings || {})
+    };
+
     res.json(metadata);
   } catch (error) {
     console.error('Error fetching metadata:', error);
@@ -48,17 +54,21 @@ router.get('/', (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 20;
 
+    const storeMappings = req.session.data.storeMappings || {};
+
     let result;
     if (groupBy === 'time') {
       result = AnalysisService.getSpendingOverTime(
         req.session.data.transactions,
         filters,
+        storeMappings,
         timeInterval
       );
     } else if (['category', 'store', 'person'].includes(groupBy)) {
       result = AnalysisService.getSpendingBy(
         req.session.data.transactions,
         filters,
+        storeMappings,
         groupBy as 'category' | 'store' | 'person'
       );
     } else {
@@ -66,6 +76,7 @@ router.get('/', (req, res) => {
       result = AnalysisService.getDetailedTransactions(
         req.session.data.transactions,
         filters,
+        storeMappings,
         page,
         pageSize
       );

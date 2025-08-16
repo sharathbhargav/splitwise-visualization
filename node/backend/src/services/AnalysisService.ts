@@ -2,12 +2,29 @@ import { Transaction, AnalysisFilters, SpendingData, DatasetMetadata } from '../
 
 export class AnalysisService {
   /**
-   * Get metadata about the dataset for populating filters
+   * Creates a reverse mapping from store variations to their canonical names
    */
-  static getMetadata(transactions: Transaction[]): DatasetMetadata {
+  private static createStoreMapping(storeMappings: { [canonicalName: string]: string[] }): Map<string, string> {
+    const storeToCanonical = new Map<string, string>();
+    Object.entries(storeMappings).forEach(([canonical, variations]) => {
+      storeToCanonical.set(canonical, canonical); // Map canonical to itself
+      variations.forEach(variation => {
+        storeToCanonical.set(variation, canonical);
+      });
+    });
+    return storeToCanonical;
+  }
+
+  /**
+   * Get metadata about the dataset for populating filters
+   * Only includes confirmed canonical store names from mappings
+   */
+  static getMetadata(transactions: Transaction[], storeMappings: { [canonicalName: string]: string[] }): DatasetMetadata {
     const people = [...new Set(transactions.flatMap(t => t.shares.map(s => s.name)))];
     const categories = [...new Set(transactions.map(t => t.category))];
-    const stores = [...new Set(transactions.map(t => t.description))];
+    
+    // Only include stores that have been normalized (exist in mappings)
+    const stores = Object.keys(storeMappings);
     
     const dates = transactions.map(t => t.date).sort();
     const dateRange = {
@@ -25,11 +42,15 @@ export class AnalysisService {
 
   /**
    * Filter transactions based on provided criteria
+   * Only matches against canonical store names from mappings
    */
   private static filterTransactions(
     transactions: Transaction[],
-    filters: AnalysisFilters
+    filters: AnalysisFilters,
+    storeMappings: { [canonicalName: string]: string[] }
   ): Transaction[] {
+    const storeToCanonical = this.createStoreMapping(storeMappings);
+
     return transactions.filter(transaction => {
       // Date range filter
       if (filters.startDate && transaction.date < filters.startDate) return false;
@@ -40,9 +61,13 @@ export class AnalysisService {
         return false;
       }
 
-      // Store filter
-      if (filters.stores?.length && !filters.stores.includes(transaction.description)) {
-        return false;
+      // Store filter - only match if store exists in mappings
+      if (filters.stores?.length) {
+        const canonicalName = storeToCanonical.get(transaction.description);
+        // If store isn't in mappings or canonical name isn't in filter, exclude it
+        if (!canonicalName || !filters.stores.includes(canonicalName)) {
+          return false;
+        }
       }
 
       // People filter
@@ -63,9 +88,10 @@ export class AnalysisService {
   static getSpendingOverTime(
     transactions: Transaction[],
     filters: AnalysisFilters,
+    storeMappings: { [canonicalName: string]: string[] },
     interval: 'day' | 'week' | 'month' = 'day'
   ): SpendingData[] {
-    const filtered = this.filterTransactions(transactions, filters);
+    const filtered = this.filterTransactions(transactions, filters, storeMappings);
     const groupedData = new Map<string, number>();
 
     filtered.forEach(transaction => {
@@ -91,14 +117,19 @@ export class AnalysisService {
 
   /**
    * Group spending by a specific dimension (category, store, or person)
+   * For stores, only shows confirmed canonical names from mappings
    */
   static getSpendingBy(
     transactions: Transaction[],
     filters: AnalysisFilters,
+    storeMappings: { [canonicalName: string]: string[] },
     dimension: 'category' | 'store' | 'person'
   ): SpendingData[] {
-    const filtered = this.filterTransactions(transactions, filters);
+    const filtered = this.filterTransactions(transactions, filters, storeMappings);
     const groupedData = new Map<string, number>();
+
+    // Create reverse mapping for store names if needed
+    const storeToCanonical = dimension === 'store' ? this.createStoreMapping(storeMappings) : null;
 
     filtered.forEach(transaction => {
       if (dimension === 'person') {
@@ -109,7 +140,15 @@ export class AnalysisService {
         });
       } else {
         // Handle category or store grouping
-        const key = dimension === 'category' ? transaction.category : transaction.description;
+        let key;
+        if (dimension === 'category') {
+          key = transaction.category;
+        } else { // store
+          // Only include stores that have been normalized
+          const canonicalName = storeToCanonical?.get(transaction.description);
+          if (!canonicalName) return; // Skip stores not in mappings
+          key = canonicalName;
+        }
         const currentAmount = groupedData.get(key) || 0;
         groupedData.set(key, currentAmount + transaction.cost);
       }
@@ -122,20 +161,36 @@ export class AnalysisService {
 
   /**
    * Get detailed transaction data with optional filters
+   * Shows canonical store names for mapped stores
    */
   static getDetailedTransactions(
     transactions: Transaction[],
     filters: AnalysisFilters,
+    storeMappings: { [canonicalName: string]: string[] },
     page: number = 1,
     pageSize: number = 20
   ): { transactions: Transaction[]; total: number } {
-    const filtered = this.filterTransactions(transactions, filters);
+    const filtered = this.filterTransactions(transactions, filters, storeMappings);
+    const storeToCanonical = this.createStoreMapping(storeMappings);
+
+    // Replace store names with their canonical names where applicable
+    const transformedTransactions = filtered.map(transaction => {
+      const canonicalName = storeToCanonical.get(transaction.description);
+      if (canonicalName) {
+        return {
+          ...transaction,
+          description: canonicalName
+        };
+      }
+      return transaction;
+    });
+
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
 
     return {
-      transactions: filtered.slice(start, end),
-      total: filtered.length
+      transactions: transformedTransactions.slice(start, end),
+      total: transformedTransactions.length
     };
   }
 }
