@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import './types/session';
-import { uploadRouter } from './routes/upload';
+import { uploadRoutes } from './routes/uploadRoutes';
 import { storesRouter } from './routes/stores';
 import { analysisRouter } from './routes/analysis';
 
@@ -13,7 +13,9 @@ const port = process.env.PORT || 3000;
 // Configure middleware
 app.use(cors({
   origin: 'http://localhost:5173', // Vite's default port
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
@@ -30,7 +32,7 @@ app.use(session({
 }));
 
 // Register routes
-app.use('/api/upload', uploadRouter);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/stores', storesRouter);
 app.use('/api/analysis', analysisRouter);
 

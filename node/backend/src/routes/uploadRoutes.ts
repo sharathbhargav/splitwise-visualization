@@ -4,6 +4,6 @@ import { upload } from '../middleware/multer';
 
 const router = Router();
 
-router.post('/upload', upload.single('file'), uploadController.handleUpload);
+router.post('/', upload.single('file'), uploadController.handleUpload);
 
 export const uploadRoutes = router;

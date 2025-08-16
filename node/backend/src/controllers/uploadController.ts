@@ -4,6 +4,9 @@ import { Readable } from 'stream';
 import { Transaction, PersonShare } from '../types/Transaction';
 
 class UploadController {
+  constructor() {
+    this.handleUpload = this.handleUpload.bind(this);
+  }
   /**
    * Handles the CSV file upload and parsing
    * Stores the parsed data in the session

@@ -86,12 +86,4 @@ export interface DatasetMetadata {
   };
 }
 
-/**
- * Session data stored in memory for each user session
- */
-export interface SessionData {
-  /** Array of parsed transactions */
-  transactions: Transaction[];
-  /** Mapping of canonical store names to their variations */
-  storeMappings: { [canonicalName: string]: string[] };
-}
+
